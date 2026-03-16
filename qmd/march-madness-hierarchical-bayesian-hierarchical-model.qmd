@@ -1,0 +1,67 @@
+---
+title: "Bayesian Hierarchical Model"
+author: "Joseph Corritone"
+format: html
+editor: visual
+---
+
+## Bayesian Hierarchical Model for March 2026 Madness
+
+This write-up covers the ideas, process, and analysis behind the development of a prediction model of the greatest sports tournament of the year, for submission into the University of Wisconsin-Madison Sports Analytics Club 2026 March Madness Data Challenge.
+
+**Overview**
+
+This will be a three-model development, starting with a base model, then incorporating efficiency & team characteristic metrics, and finally adding a dynamic element to the model.
+
+```{r}
+#| label: Preliminaries
+#| warning: false
+#| message: false
+
+# install.packages(c("tidyverse", "brms", "tidybayes"))
+
+library(tidyverse)
+library(brms)
+library(tidybayes)
+```
+
+### **THE BASE MODEL**
+
+**2026 Regular Season & Conference Tournament Game Data**
+
+```{r}
+#| label: Regular Season Game Data
+
+# Import Men's College Basketball regular season game data to build the base dataset:
+
+season <- 2026    # Change depending on which seasons to include data from
+
+regszn_compact_results <- read_csv("MRegularSeasonCompactResults.csv") %>%
+  filter(Season == season) %>%
+  select(Season, WTeamID, WScore, LTeamID, LScore, WLoc)
+
+game_winners <- regszn_compact_results %>%
+  transmute(Season, team = WTeamID, opponent = LTeamID, team_win = 1,
+            team_score = WScore, opponent_score = LScore,
+            home = if_else(WLoc == "H", 1, 0),
+            neutral = if_else(WLoc == "N", 1, 0))
+
+game_losers <- regszn_compact_results %>%
+  transmute(Season, team = LTeamID, opponent = WTeamID, team_win = 0,
+            team_score = LScore, opponent_score = WScore,
+            home = case_when(WLoc == "A" ~ 1, TRUE ~ 0),
+            neutral = if_else(WLoc == "N", 1, 0))
+
+compact_game_results <- bind_rows(game_winners, game_losers) %>%
+  mutate(score_diff = team_score - opponent_score)
+
+```
+
+```{r}
+#| label: Team Ratings
+
+# Methodology for developing team ratings in the base model. Will be developed further in future modeling
+
+
+
+```
