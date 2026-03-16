@@ -6,7 +6,7 @@ fit_model_02_efficiency <- function(train_data) {
       SeedDiff,
       OffEffDiff,
       DefEffDiff,
-      AdjTempo,
+      AdjTempoDiff,
       SOS) %>%
     drop_na()
 
