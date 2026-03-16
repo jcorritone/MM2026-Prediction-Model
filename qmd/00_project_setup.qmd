@@ -1,5 +1,5 @@
 ---
-title: "Project Workspace"
+title: "Project Setup and Base Model"
 format: html
 ---
 
@@ -25,4 +25,64 @@ data <- load_data()
 
 source(here("R", "data", "build_team_games.R"))
 team_games <- build_team_games(data$reg_season_results)
+```
+
+```{r}
+#| label: build-team-season-features
+
+source(here("R", "features", "build_team_season_features.R"))
+team_season_features <- build_team_season_features(team_games)
+```
+
+```{r}
+#| label: build-matchup-training-data
+
+source(here("R", "features", "build_matchup_training_data.R"))
+
+matchup_training_data <- build_matchup_training_data(
+  tourney_results = data$tourney_results,
+  team_season_features = team_season_features,
+  seeds = data$seeds)
+```
+
+```{r}
+#| label: train-test-split
+
+train_data <- matchup_training_data %>%
+  filter(Season <= 2021)
+
+test_data <- matchup_training_data %>%
+  filter(Season >= 2022)
+
+nrow(train_data)
+nrow(test_data)
+```
+
+```{r}
+#| label: fit-model-01-logistic
+
+source(here("R", "models", "fit_model_01_logistic.R"))
+
+model_01_logistic <- fit_model_01_logistic(train_data)
+```
+
+```{r}
+#| label: summarize-model-01-logistic
+
+summary(model_01_logistic)
+```
+
+```{r}
+#| label: test-predictions-and-brier
+
+test_predictions <- test_data %>%
+  mutate(
+    PredProb = predict(
+      model_01_logistic,
+      newdata = .,
+      type = "response"))
+
+test_brier <- mean((test_predictions$PredProb - test_predictions$Outcome)^2)
+
+test_brier
 ```
