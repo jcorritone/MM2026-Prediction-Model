@@ -10,7 +10,7 @@ build_team_games <- function(reg_season_results) {
       OpponentID = LTeamID,
       TeamScore = WScore,
       OppScore = LScore,
-      PointDiff = WScore - LScore
+      PointDiff = WScore - LScore,
       Win = 1,
       Location = WLoc,
       NumOT)
@@ -23,7 +23,7 @@ build_team_games <- function(reg_season_results) {
       OpponentID = WTeamID,
       TeamScore = LScore,
       OppScore = WScore,
-      PointDiff = LScore - WScore
+      PointDiff = LScore - WScore,
       Win = 0,
       Location = case_when(
         WLoc == "H" ~ "A",
