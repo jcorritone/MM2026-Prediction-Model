@@ -1,6 +1,6 @@
 library(tidyverse)
 
-model_01_logistic <- function(matchup_training_data) {
+fit_model_01_logistic <- function(matchup_training_data) {
 
   model_data <- matchup_training_data %>%
     select(
