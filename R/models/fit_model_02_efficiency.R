@@ -4,6 +4,7 @@ fit_model_02_efficiency <- function(train_data) {
     select(
       Outcome,
       SeedDiff,
+      NetEffDiff,
       OffEffDiff,
       DefEffDiff
     ) %>%
