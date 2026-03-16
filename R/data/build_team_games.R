@@ -13,7 +13,18 @@ build_team_games <- function(reg_season_results) {
       PointDiff = WScore - LScore,
       Win = 1,
       Location = WLoc,
-      NumOT)
+      NumOT,
+      
+      TeamFGA = WFGA,
+      TeamOR = WOR,
+      TeamTO = WTO,
+      TeamFTA = WFTA,
+      OppFGA = LFGA,
+      OppOR = LOR,
+      OppTO = LTO,
+      OppFTA = LFTA)
+
+  FGA - OR + TO + 0.475 * FTA
 
   loser_rows <- reg_season_results %>%
     transmute(
@@ -28,7 +39,16 @@ build_team_games <- function(reg_season_results) {
       Location = case_when(
         WLoc == "H" ~ "A",
         WLoc == "A" ~ "H", TRUE ~ "N"),
-      NumOT)
+      NumOT,
+      
+      TeamFGA = LFGA,
+      TeamOR = LOR,
+      TeamTO = LTO,
+      TeamFTA = LFTA,
+      OppFGA = WFGA,
+      OppOR = WOR,
+      OppTO = WTO,
+      OppFTA = WFTA)
 
   bind_rows(winner_rows, loser_rows) %>%
     arrange(Season, DayNum, TeamID)
