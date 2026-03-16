@@ -1,0 +1,22 @@
+---
+title: "Project Setup"
+format: html
+---
+
+```{r}
+#| label: Load Packages
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(here)
+library(brms)
+```
+
+```{r}
+#| label: Confirm project root and import data
+
+here()
+source(here("R", "data", "load_data.R"))
+data <- load_data()
+```
