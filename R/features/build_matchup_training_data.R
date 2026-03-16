@@ -6,6 +6,7 @@ build_matchup_training_data <- function(tourney_results, team_season_features, s
 
   matchup_base <- tourney_results %>%
     filter(Season %in% valid_seasons) %>%
+    
     transmute(
       Season,
       Team1 = pmin(WTeamID, LTeamID),
@@ -24,8 +25,10 @@ build_matchup_training_data <- function(tourney_results, team_season_features, s
 
   seeds_clean <- seeds %>%
     filter(Season %in% valid_seasons) %>%
+    
     mutate(
       SeedNum = readr::parse_number(Seed)) %>%
+    
     select(Season, TeamID, Seed, SeedNum)
 
   team1_seeds <- seeds_clean %>%
@@ -42,16 +45,24 @@ build_matchup_training_data <- function(tourney_results, team_season_features, s
 
   matchup_training_data <- matchup_base %>%
     left_join(team1_features, by = c("Season", "Team1" = "Team1_TeamID")) %>%
+    
     left_join(team2_features, by = c("Season", "Team2" = "Team2_TeamID")) %>%
+    
     left_join(team1_seeds, by = c("Season", "Team1")) %>%
+    
     left_join(team2_seeds, by = c("Season", "Team2")) %>%
-    mutate(
+    
+  mutate(
       WinPctDiff = Team1_WinPct - Team2_WinPct,
       AvgPointDiffDiff = Team1_AvgPointDiff - Team2_AvgPointDiff,
       AvgTeamScoreDiff = Team1_AvgTeamScore - Team2_AvgTeamScore,
       AvgOppScoreDiff = Team1_AvgOppScore - Team2_AvgOppScore,
-      SeedDiff = Team1_SeedNum - Team2_SeedNum) %>%
-    arrange(Season, Team1, Team2)
+      SeedDiff = Team1_SeedNum - Team2_SeedNum,
+      OffEffDiff = Team1_OffEff - Team2_OffEff,
+      DefEffDiff = Team1_DefEff - Team2_DefEff,
+      NetEffDiff = Team1_NetEff - Team2_NetEff) %>%
+    
+  arrange(Season, Team1, Team2)
 
   return(matchup_training_data)
 }
