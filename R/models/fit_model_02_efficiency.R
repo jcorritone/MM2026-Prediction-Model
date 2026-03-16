@@ -7,7 +7,7 @@ fit_model_02_efficiency <- function(train_data) {
       OffEffDiff,
       DefEffDiff,
       AdjTempoDiff,
-      SOS) %>%
+      SOSDiff) %>%
     drop_na()
 
   glm(
