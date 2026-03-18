@@ -35,8 +35,8 @@ build_team_strength_ratings_bt <- function(reg_season_results) {
         player1 = player1,
         player2 = player2,
         formula = ~ team + at.home,
-        id = "team"
-      )
+        id = "team",
+        br = TRUE)
 
       BradleyTerry2::BTabilities(fit) %>%
         as.data.frame() %>%
