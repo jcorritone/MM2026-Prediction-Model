@@ -1,6 +1,6 @@
 library(tidyverse)
 
-build_matchup_training_data <- function(tourney_results, team_season_features, seeds) {
+build_matchup_training_data <- function(tourney_results, team_season_features, seeds, team_ridge_ratings = NULL) {
 
   valid_seasons <- sort(unique(team_season_features$Season))
 
@@ -52,7 +52,7 @@ build_matchup_training_data <- function(tourney_results, team_season_features, s
     
     left_join(team2_seeds, by = c("Season", "Team2")) %>%
     
-  mutate(
+    mutate(
       WinPctDiff = Team1_WinPct - Team2_WinPct,
       AvgPointDiffDiff = Team1_AvgPointDiff - Team2_AvgPointDiff,
       AvgTeamScoreDiff = Team1_AvgTeamScore - Team2_AvgTeamScore,
@@ -62,9 +62,29 @@ build_matchup_training_data <- function(tourney_results, team_season_features, s
       DefEffDiff = Team1_DefEff - Team2_DefEff,
       NetEffDiff = Team1_NetEff - Team2_NetEff,
       AdjTempoDiff = Team1_AdjTempo - Team2_AdjTempo,
-      SOSDiff = Team1_SOS - Team2_SOS) %>%
+      SOSDiff = Team1_SOS - Team2_SOS)
     
-  arrange(Season, Team1, Team2)
+  if (!is.null(team_ridge_ratings)) {
+
+    team1_ridge <- team_ridge_ratings %>%
+      rename(
+        Team1 = TeamID,
+        Team1_RidgeRating = RidgeRating)
+
+    team2_ridge <- team_ridge_ratings %>%
+      rename(
+        Team2 = TeamID,
+        Team2_RidgeRating = RidgeRating)
+
+    matchup_training_data <- matchup_training_data %>%
+      left_join(team1_ridge, by = c("Season", "Team1")) %>%
+      left_join(team2_ridge, by = c("Season", "Team2")) %>%
+      mutate(
+        RidgeRatingDiff = Team1_RidgeRating - Team2_RidgeRating)
+  }
+
+  matchup_training_data <- matchup_training_data %>%
+    arrange(Season, Team1, Team2)
 
   return(matchup_training_data)
 }
