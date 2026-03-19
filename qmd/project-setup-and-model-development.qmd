@@ -257,3 +257,220 @@ filled_csv
 
 write_csv(filled_csv, here("data", "processed", "joseph-corritone-mm2026-analytics-competition.csv"))
 ```
+
+```{r}
+#| label: setup-mm2026-bracket
+
+bracket <- read_csv(here("data", "raw", "mm2026-bracket.csv")) %>%
+  select(-TeamID) %>%
+  left_join(data$teams %>% select(TeamID, TeamName), by = "TeamName") %>%
+  select(Slot, TeamID, TeamName)
+
+team_strength_2026 <- team_season_features_adjusted %>%
+  filter(Season == 2026) %>%
+  select(TeamID, AdjNetEff)
+
+mm2026_bracket <- bracket %>%
+  left_join(team_strength_2026, by = "TeamID")
+```
+
+```{r}
+#| label: monte-carlo-bracket-simulation
+
+set.seed(2015)
+
+simulate_game <- function(team1, team2, model) {
+  matchup <- tibble(
+    AdjNetEffDiff = team1$AdjNetEff - team2$AdjNetEff)
+
+  p_team1 <- predict(model, newdata = matchup, type = "response")
+
+  if (runif(1) < p_team1) {
+    team1
+  } else {
+    team2
+  }
+}
+
+simulate_round <- function(teams_df, slot_order, model) {
+  teams_ordered <- teams_df %>%
+    mutate(Slot = factor(Slot, levels = slot_order)) %>%
+    arrange(Slot)
+
+  winners <- purrr::map_dfr(seq(1, nrow(teams_ordered), by = 2), function(i) {
+    team1 <- teams_ordered[i, ]
+    team2 <- teams_ordered[i + 1, ]
+    simulate_game(team1, team2, model)
+  })
+
+  winners
+}
+
+region_slot_order <- c(
+  "01", "16",
+  "08", "09",
+  "05", "12",
+  "04", "13",
+  "06", "11",
+  "03", "14",
+  "07", "10",
+  "02", "15")
+
+simulate_region <- function(region_prefix, bracket_df, model) {
+  slot_order_r64 <- paste0(region_prefix, region_slot_order)
+
+  region_teams <- bracket_df %>%
+    filter(stringr::str_starts(Slot, region_prefix))
+
+  r32 <- simulate_round(region_teams, slot_order_r64, model) %>%
+    mutate(Slot = paste0(region_prefix, "_R32_", row_number()))
+
+  s16 <- simulate_round(
+    r32,
+    paste0(region_prefix, "_R32_", 1:8),
+    model
+  ) %>%
+    mutate(Slot = paste0(region_prefix, "_S16_", row_number()))
+
+  e8 <- simulate_round(
+    s16,
+    paste0(region_prefix, "_S16_", 1:4),
+    model
+  ) %>%
+    mutate(Slot = paste0(region_prefix, "_E8_", row_number()))
+
+  f4 <- simulate_round(
+    e8,
+    paste0(region_prefix, "_E8_", 1:2),
+    model
+  ) %>%
+    mutate(Slot = paste0(region_prefix, "_F4_", row_number()))
+
+  list(
+    r32 = r32,
+    s16 = s16,
+    e8 = e8,
+    f4 = f4
+  )
+}
+
+simulate_tournament_once <- function(bracket_df, model) {
+  west <- simulate_region("W", bracket_df, model)
+  east <- simulate_region("X", bracket_df, model)
+  south <- simulate_region("Y", bracket_df, model)
+  midwest <- simulate_region("Z", bracket_df, model)
+
+  final_four <- bind_rows(
+    west$f4 %>% mutate(FFSlot = "FF1"),
+    east$f4 %>% mutate(FFSlot = "FF2"),
+    south$f4 %>% mutate(FFSlot = "FF3"),
+    midwest$f4 %>% mutate(FFSlot = "FF4")
+  )
+
+  semi1 <- simulate_game(
+    final_four %>% filter(FFSlot == "FF1"),
+    final_four %>% filter(FFSlot == "FF2"),
+    model
+  )
+
+  semi2 <- simulate_game(
+    final_four %>% filter(FFSlot == "FF3"),
+    final_four %>% filter(FFSlot == "FF4"),
+    model
+  )
+
+  championship_teams <- bind_rows(
+    semi1 %>% mutate(Game = "Title1"),
+    semi2 %>% mutate(Game = "Title2")
+  )
+
+  champion <- simulate_game(
+    championship_teams %>% filter(Game == "Title1"),
+    championship_teams %>% filter(Game == "Title2"),
+    model
+  )
+
+  list(
+    r32 = bind_rows(west$r32, east$r32, south$r32, midwest$r32),
+    s16 = bind_rows(west$s16, east$s16, south$s16, midwest$s16),
+    e8 = bind_rows(west$e8, east$e8, south$e8, midwest$e8),
+    f4 = final_four,
+    f2 = bind_rows(semi1, semi2),
+    champ = champion
+  )
+}
+
+n_sims <- 10000
+
+all_teams <- mm2026_bracket %>%
+  select(TeamID, TeamName) %>%
+  distinct()
+
+sim_results <- purrr::map(seq_len(n_sims), function(i) {
+  sim <- simulate_tournament_once(
+    bracket_df = mm2026_bracket,
+    model = model_02b_adj_efficiency
+  )
+
+  list(
+    r32 = sim$r32 %>% select(TeamID),
+    s16 = sim$s16 %>% select(TeamID),
+    e8 = sim$e8 %>% select(TeamID),
+    f4 = sim$f4 %>% select(TeamID),
+    f2 = sim$f2 %>% select(TeamID),
+    champ = sim$champ %>% select(TeamID)
+  )
+})
+
+reach_r32 <- bind_rows(purrr::map(sim_results, "r32"), .id = "Sim") %>%
+  count(TeamID, name = "R32_Count")
+
+reach_s16 <- bind_rows(purrr::map(sim_results, "s16"), .id = "Sim") %>%
+  count(TeamID, name = "S16_Count")
+
+reach_e8 <- bind_rows(purrr::map(sim_results, "e8"), .id = "Sim") %>%
+  count(TeamID, name = "E8_Count")
+
+reach_f4 <- bind_rows(purrr::map(sim_results, "f4"), .id = "Sim") %>%
+  count(TeamID, name = "F4_Count")
+
+reach_f2 <- bind_rows(purrr::map(sim_results, "f2"), .id = "Sim") %>%
+  count(TeamID, name = "F2_Count")
+
+win_champ <- bind_rows(purrr::map(sim_results, "champ"), .id = "Sim") %>%
+  count(TeamID, name = "Champ_Count")
+
+team_round_probs <- all_teams %>%
+  left_join(reach_r32, by = "TeamID") %>%
+  left_join(reach_s16, by = "TeamID") %>%
+  left_join(reach_e8, by = "TeamID") %>%
+  left_join(reach_f4, by = "TeamID") %>%
+  left_join(reach_f2, by = "TeamID") %>%
+  left_join(win_champ, by = "TeamID") %>%
+  mutate(
+    across(ends_with("_Count"), ~ replace_na(.x, 0L)),
+    Prob_R32 = R32_Count / n_sims,
+    Prob_S16 = S16_Count / n_sims,
+    Prob_E8 = E8_Count / n_sims,
+    Prob_F4 = F4_Count / n_sims,
+    Prob_F2 = F2_Count / n_sims,
+    Prob_Champ = Champ_Count / n_sims
+  ) %>%
+  select(
+    TeamName,
+    Prob_R32,
+    Prob_S16,
+    Prob_E8,
+    Prob_F4,
+    Prob_F2,
+    Prob_Champ) %>%
+  arrange(desc(Prob_Champ))
+
+team_round_probs
+```
+
+
+
+
+
+
