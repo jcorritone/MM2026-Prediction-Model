@@ -1,4 +1,8 @@
-MM2026-Prediction-Model
+### MM2026-Prediction-Model
 
-A predictive model for the 2026 March Madness tournament, developed for the UW-Madison Sports Analytics Club March Madness Data Challenge 2026. 
+Development of a predictive model for the 2026 March Madness tournament. 
+
+**Data Source**
+
+Kaggle Featured Prediction Compeition: March Machine Learning Mania 2026
 
