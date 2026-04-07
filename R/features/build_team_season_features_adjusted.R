@@ -12,16 +12,14 @@ compute_adjusted_efficiency_iterative <- function(team_games,
       RawPoss = (TeamPoss + OppPoss) / 2,
       AdjPoss = RawPoss * (40 / (40 + 5 * NumOT)),
       GameOffEff = TeamScore / AdjPoss,
-      GameDefEff = OppScore / AdjPoss
-    )
+      GameDefEff = OppScore / AdjPoss)
 
   national_means <- games %>%
     group_by(Season) %>%
     summarise(
       NatOffEff = mean(GameOffEff, na.rm = TRUE),
       NatDefEff = mean(GameDefEff, na.rm = TRUE),
-      .groups = "drop"
-    )
+      .groups = "drop")
 
   ratings <- games %>%
     group_by(Season, TeamID) %>%
@@ -29,13 +27,12 @@ compute_adjusted_efficiency_iterative <- function(team_games,
       GamesPlayed = n(),
       RawOffEff = mean(GameOffEff, na.rm = TRUE),
       RawDefEff = mean(GameDefEff, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
+      .groups = "drop") %>%
+    
     mutate(
       RawNetEff = RawOffEff - RawDefEff,
       AdjOffEff = RawOffEff,
-      AdjDefEff = RawDefEff
-    )
+      AdjDefEff = RawDefEff)
 
   for (iter in seq_len(max_iter)) {
 
@@ -48,10 +45,9 @@ compute_adjusted_efficiency_iterative <- function(team_games,
           rename(
             OpponentID = TeamID,
             OppAdjOffEff = AdjOffEff,
-            OppAdjDefEff = AdjDefEff
-          ),
-        by = c("Season", "OpponentID")
-      ) %>%
+            OppAdjDefEff = AdjDefEff),
+        by = c("Season", "OpponentID")) %>%
+      
       left_join(national_means, by = "Season")
 
     new_ratings <- game_updates %>%
@@ -59,24 +55,21 @@ compute_adjusted_efficiency_iterative <- function(team_games,
       summarise(
         NewAdjOffEff = mean(GameOffEff - OppAdjDefEff + NatDefEff, na.rm = TRUE),
         NewAdjDefEff = mean(GameDefEff - OppAdjOffEff + NatOffEff, na.rm = TRUE),
-        .groups = "drop"
-      )
+        .groups = "drop")
 
     ratings_next <- ratings %>%
       left_join(new_ratings, by = c("Season", "TeamID")) %>%
       mutate(
         UpdatedAdjOffEff = damping * NewAdjOffEff + (1 - damping) * AdjOffEff,
-        UpdatedAdjDefEff = damping * NewAdjDefEff + (1 - damping) * AdjDefEff
-      )
+        UpdatedAdjDefEff = damping * NewAdjDefEff + (1 - damping) * AdjDefEff)
 
     max_change <- ratings_next %>%
       summarise(
         MaxDelta = max(
           abs(UpdatedAdjOffEff - AdjOffEff),
           abs(UpdatedAdjDefEff - AdjDefEff),
-          na.rm = TRUE
-        )
-      ) %>%
+          na.rm = TRUE)) %>%
+      
       pull(MaxDelta)
 
     ratings <- ratings_next %>%
@@ -88,8 +81,7 @@ compute_adjusted_efficiency_iterative <- function(team_games,
         RawDefEff,
         RawNetEff,
         AdjOffEff = UpdatedAdjOffEff,
-        AdjDefEff = UpdatedAdjDefEff
-      )
+        AdjDefEff = UpdatedAdjDefEff)
 
     if (max_change < tol) {
       break
@@ -98,8 +90,7 @@ compute_adjusted_efficiency_iterative <- function(team_games,
 
   ratings %>%
     mutate(
-      AdjNetEff = AdjOffEff - AdjDefEff
-    )
+      AdjNetEff = AdjOffEff - AdjDefEff)
 }
 
 
@@ -117,8 +108,7 @@ build_team_season_features_adjusted <- function(team_games,
       RawPoss = (TeamPoss + OppPoss) / 2,
       AdjPoss = RawPoss * (40 / (40 + 5 * NumOT)),
       GameOffEff = TeamScore / AdjPoss,
-      GameDefEff = OppScore / AdjPoss
-    )
+      GameDefEff = OppScore / AdjPoss)
 
   base_features <- games %>%
     group_by(Season, TeamID) %>%
@@ -130,15 +120,13 @@ build_team_season_features_adjusted <- function(team_games,
       AvgOppScore = mean(OppScore, na.rm = TRUE),
       AvgPointDiff = mean(PointDiff, na.rm = TRUE),
       AdjTempo = mean(AdjPoss, na.rm = TRUE),
-      .groups = "drop"
-    )
+      .groups = "drop")
 
   adjusted_ratings <- compute_adjusted_efficiency_iterative(
     team_games = team_games,
     max_iter = max_iter,
     tol = tol,
-    damping = damping
-  )
+    damping = damping)
 
   adj_sos <- games %>%
     select(Season, TeamID, OpponentID) %>%
@@ -149,17 +137,16 @@ build_team_season_features_adjusted <- function(team_games,
           OpponentID = TeamID,
           OppAdjOffEff = AdjOffEff,
           OppAdjDefEff = AdjDefEff,
-          OppAdjNetEff = AdjNetEff
-        ),
-      by = c("Season", "OpponentID")
-    ) %>%
+          OppAdjNetEff = AdjNetEff),
+      by = c("Season", "OpponentID")) %>%
+    
     group_by(Season, TeamID) %>%
+    
     summarise(
       AdjSOS = mean(OppAdjNetEff, na.rm = TRUE),
       AdjSOS_Off = mean(OppAdjDefEff, na.rm = TRUE),
       AdjSOS_Def = mean(OppAdjOffEff, na.rm = TRUE),
-      .groups = "drop"
-    )
+      .groups = "drop")
 
   base_features %>%
     left_join(adjusted_ratings, by = c("Season", "TeamID", "GamesPlayed")) %>%
