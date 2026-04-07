@@ -7,13 +7,11 @@ fit_model_04_recency <- function(train_data_recency) {
       RecencyOffEffDiff,
       RecencyDefEffDiff,
       RecencySOSDiff,
-      TrendNetEffDiff
-    ) %>%
+      TrendNetEffDiff) %>%
     drop_na()
 
   glm(
     Outcome ~ SeedDiff + RecencyOffEffDiff + RecencyDefEffDiff + RecencySOSDiff + TrendNetEffDiff,
     data = model_data,
-    family = binomial(link = "logit")
-  )
+    family = binomial(link = "logit"))
 }
