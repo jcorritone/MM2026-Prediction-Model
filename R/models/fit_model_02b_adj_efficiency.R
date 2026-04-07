@@ -6,8 +6,7 @@ fit_model_02b_adj_efficiency <- function(train_data) {
       SeedDiff,
       AdjNetEffDiff,
       AdjSOSDiff,
-      AdjTempoDiff
-    ) %>%
+      AdjTempoDiff) %>%
     drop_na()
 
   glm(
