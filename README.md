@@ -1,6 +1,6 @@
 ### MM2026-Prediction-Model
 
-Development of a predictive model for the 2026 March Madness tournament. 
+This repo contains the development of a predictive model for the 2026 March Madness tournament, inspired by the UW-Madison Sports Analytics Club's March Madness Data Challenge (link).
 
 **Data Source**
 
